@@ -29,6 +29,8 @@ public class GridGenerator : MonoBehaviour
     private Dictionary<int, List<int>> _meshIndexesByGlobalVertexIndex = new();
     private Dictionary<int, Mesh> _meshByMeshIndex = new();
     private Dictionary<int, Dictionary<int, List<int>>> _meshIndexAndLocalVertexIndexPairByGlobalVertexIndex = new();
+    private Dictionary<Vector3, Dictionary<int, List<int>>> _vertexByPosition = new();
+    private Dictionary<int, Vector3> _vertexPositionByHexIndex = new();
 
     private void Awake()
     {
@@ -75,33 +77,54 @@ public class GridGenerator : MonoBehaviour
                 SetRendererTexture(render, Layer1Tex, _1_n[spriteIndex]);
             }
         }
+
+        var k = 0;
+        foreach (var kvp in _vertexByPosition)
+        {
+             _vertexPositionByHexIndex.Add(k, kvp.Key);
+             k++;
+        }
     }
 
     private void Update()
     {
-        _indexToColor++;
-        if (_meshIndexAndLocalVertexIndexPairByGlobalVertexIndex.TryGetValue(_indexToColor, out var dict))
+        // _indexToColor++;
+
+        foreach (var kvp in _vertexByPosition[_vertexPositionByHexIndex[_indexToColor]])
         {
-            foreach (var meshIndexPair in dict)
+            if (_meshByMeshIndex.TryGetValue(kvp.Key, out var mesh))
             {
-                if (_meshByMeshIndex.TryGetValue(meshIndexPair.Key, out var mesh))
+                foreach (var index in kvp.Value)
                 {
-                    foreach (var index in meshIndexPair.Value)
-                    {
-                        var colors = mesh.colors;
-                        colors[index] = Color.red;
-                        mesh.colors = colors;
-                    
-                        // mesh.colors[meshIndexPair.Value] = Color.red;
-                    
-                        Debug.Log(mesh.vertices[index]);
-                        Debug.Log(mesh.uv[index]);
-                        Debug.Log(mesh.colors[index]);
-                        Debug.Log(Color.red);
-                    }
+                    var colors = mesh.colors;
+                    colors[index] = Color.red;
+                    mesh.colors = colors;
                 }
             }
         }
+        
+        // if (_meshIndexAndLocalVertexIndexPairByGlobalVertexIndex.TryGetValue(_indexToColor, out var dict))
+        // {
+        //     foreach (var meshIndexPair in dict)
+        //     {
+        //         if (_meshByMeshIndex.TryGetValue(meshIndexPair.Key, out var mesh))
+        //         {
+        //             foreach (var index in meshIndexPair.Value)
+        //             {
+        //                 var colors = mesh.colors;
+        //                 colors[index] = Color.red;
+        //                 mesh.colors = colors;
+        //             
+        //                 // mesh.colors[meshIndexPair.Value] = Color.red;
+        //             
+        //                 Debug.Log(mesh.vertices[index]);
+        //                 Debug.Log(mesh.uv[index]);
+        //                 Debug.Log(mesh.colors[index]);
+        //                 Debug.Log(Color.red);
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     private void OnDrawGizmos()
@@ -144,7 +167,25 @@ public class GridGenerator : MonoBehaviour
                     var k = 0;
                     foreach (var vert in triangleByIndex.Value.Vertexes)
                     {
+                        var vertIndex = vertices.Count + k;
 
+                        if (!_vertexByPosition.ContainsKey(vert))
+                        {
+                            var a = new List<int>() { vertices.Count + k };
+                            a.Remove(vertIndex);
+                            _vertexByPosition.Add(vert, new Dictionary<int, List<int>>(){{meshIndex, a} });
+                        }
+                        else
+                        {
+                            var a = new List<int>() { vertices.Count + k };
+                            a.Remove(vertIndex);
+                            if (!_vertexByPosition[vert].ContainsKey(meshIndex))
+                            {
+                                _vertexByPosition[vert].Add(meshIndex, new List<int>());
+                            }
+                            _vertexByPosition[vert][meshIndex].AddRange(a);
+                        }
+                        
                         if (_meshIndexAndLocalVertexIndexPairByGlobalVertexIndex.ContainsKey(triangleByIndex.Key))
                         {
                             _meshIndexAndLocalVertexIndexPairByGlobalVertexIndex[triangleByIndex.Key].TryAdd(meshIndex, new List<int>()
