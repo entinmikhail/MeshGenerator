@@ -28,7 +28,7 @@ public class GridGenerator : MonoBehaviour
     private Dictionary<int, Triangle> _trianglesByIndex = new();
     private Dictionary<int, List<int>> _meshIndexesByGlobalVertexIndex = new();
     private Dictionary<int, Mesh> _meshByMeshIndex = new();
-    private Dictionary<int, Dictionary<int, int>> _meshIndexAndLocalVertexIndexPairByGlobalVertexIndex = new();
+    private Dictionary<int, Dictionary<int, List<int>>> _meshIndexAndLocalVertexIndexPairByGlobalVertexIndex = new();
 
     private void Awake()
     {
@@ -60,11 +60,11 @@ public class GridGenerator : MonoBehaviour
     {
         GlobalGenerate();
         
-        for (var i = 1; i > 0; i--)
+        for (var i = 6; i > 0; i--)
         {
-            for (var j = 0; j < 1; j++)
+            for (var j = 0; j < 8; j++)
             {
-                var spriteIndex = j + (1 * (1 - i));
+                var spriteIndex = j + (8 * (6 - i));
 
                 var quadCenter = new Vector3(_size / 2 + j * _size, _size / 2 + i * _size);
                 var halfSize = _size / 2;
@@ -79,15 +79,26 @@ public class GridGenerator : MonoBehaviour
 
     private void Update()
     {
+        _indexToColor++;
         if (_meshIndexAndLocalVertexIndexPairByGlobalVertexIndex.TryGetValue(_indexToColor, out var dict))
         {
             foreach (var meshIndexPair in dict)
             {
                 if (_meshByMeshIndex.TryGetValue(meshIndexPair.Key, out var mesh))
                 {
-                    mesh.colors[meshIndexPair.Value] = Color.red;
-                    Debug.Log(mesh.vertices[meshIndexPair.Value]);
-                    Gizmos.DrawSphere(mesh.vertices[meshIndexPair.Value], 0.2f);
+                    foreach (var index in meshIndexPair.Value)
+                    {
+                        var colors = mesh.colors;
+                        colors[index] = Color.red;
+                        mesh.colors = colors;
+                    
+                        // mesh.colors[meshIndexPair.Value] = Color.red;
+                    
+                        Debug.Log(mesh.vertices[index]);
+                        Debug.Log(mesh.uv[index]);
+                        Debug.Log(mesh.colors[index]);
+                        Debug.Log(Color.red);
+                    }
                 }
             }
         }
@@ -134,22 +145,22 @@ public class GridGenerator : MonoBehaviour
                     foreach (var vert in triangleByIndex.Value.Vertexes)
                     {
 
-                        if (_meshIndexAndLocalVertexIndexPairByGlobalVertexIndex.ContainsKey(triangleByIndex.Value.TriangleIndex))
+                        if (_meshIndexAndLocalVertexIndexPairByGlobalVertexIndex.ContainsKey(triangleByIndex.Key))
                         {
-                            _meshIndexAndLocalVertexIndexPairByGlobalVertexIndex[triangleByIndex.Value.TriangleIndex].TryAdd(meshIndex, vertices.Count + k);
+                            _meshIndexAndLocalVertexIndexPairByGlobalVertexIndex[triangleByIndex.Key].TryAdd(meshIndex, new List<int>()
+                                {vertices.Count, vertices.Count + 1, vertices.Count + 2});
                         }
                         else
                         {
-                            var dict = new Dictionary<int, int> { { meshIndex, vertices.Count + k } };
-                            _meshIndexAndLocalVertexIndexPairByGlobalVertexIndex.TryAdd(triangleByIndex.Value.TriangleIndex, dict );
+                            var dict = new Dictionary<int, List<int>> { { meshIndex, new List<int>
+                                {vertices.Count, vertices.Count + 1, vertices.Count + 2} } };
+                            _meshIndexAndLocalVertexIndexPairByGlobalVertexIndex.Add(triangleByIndex.Key, dict);
                         }
                         
                         ver.Add(vert);
                         colors.Add(Color.black);
                         k++;
                     }
-
-                  
                     
                     foreach (var v in ver)
                     {
@@ -217,6 +228,7 @@ public class GridGenerator : MonoBehaviour
                 vertices.AddRange(newVertexes);
                 var newTriangle = GetTrianglesByVertex(newVertexes, index, IsNeedToRotate());
                 triangles.AddRange(newTriangle);
+                Debug.LogError(index);
                 _trianglesByIndex.Add(index, new Triangle(index, newVertexes, newTriangle, IsNeedToRotate()));
                 
                 _offset += new Vector3(_height * 2, 0);
