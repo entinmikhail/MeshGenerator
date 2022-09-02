@@ -367,10 +367,11 @@ MonoBehaviour:
   - {fileID: 2800000, guid: 175989fae8bb13d41ae4bac715d27a32, type: 3}
   - {fileID: 2800000, guid: 068ac7aa975a7ae45a90e8cab86317b2, type: 3}
   - {fileID: 2800000, guid: e44aa88d53b58e5468bcaed4e11af9b9, type: 3}
+  _fog: {fileID: 2800000, guid: 79bcd5e2547e685478d8b712dad851f8, type: 3}
   _prefab: {fileID: 1397098275}
   _quad: {fileID: 0}
-  _size: 5
-  _indexToColor: 0
+  _size: 4.41
+  _indexToColor: 200
 --- !u!4 &922651446
 Transform:
   m_ObjectHideFlags: 0

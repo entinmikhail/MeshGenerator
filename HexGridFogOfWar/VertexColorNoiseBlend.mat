@@ -9,11 +9,11 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: VertexColorNoiseBlend
   m_Shader: {fileID: 4800000, guid: 34c9867e6760a0c4fad7b81a9607ca4d, type: 3}
-  m_ShaderKeywords: 
+  m_ShaderKeywords: _LAYERS_TWO
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2000
+  m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses: []
   m_SavedProperties:
@@ -21,6 +21,14 @@ Material:
     m_TexEnvs:
     - _Layer1Tex:
         m_Texture: {fileID: 2800000, guid: 48ac9d4c1f9f4244db9ba0c9dc3b0f54, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Layer2Tex:
+        m_Texture: {fileID: 2800000, guid: b4f84a5972276184ebedd6790b999033, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Layer3Tex:
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
@@ -52,9 +60,10 @@ Material:
     - _AlphaCutoff: 0.5
     - _BorderCurve: 1.28
     - _BorderMaxThreshold: 0.656
-    - _BorderMinThreshold: 0.318
+    - _BorderMinThreshold: 0.347
     - _Debug: 0
     - _Debug1: 0
+    - _Layers: 1
     - _NoiseCurve: 0.81
     - _QueueControl: 0
     - _QueueOffset: 0

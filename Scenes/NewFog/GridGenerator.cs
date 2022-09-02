@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class GridGenerator : MonoBehaviour
@@ -8,10 +9,12 @@ public class GridGenerator : MonoBehaviour
     [SerializeField] private float _radius;
     [SerializeField] private Texture[] _1;
     [SerializeField] private Texture[] _1_n;
+    [SerializeField] private Texture _fog;
     [SerializeField] private GameObject _prefab;
     [SerializeField] private GameObject _quad;
     [SerializeField] private float _size = 5f;
     [SerializeField] private int _indexToColor;
+    [SerializeField] private Color _color;
     
     private List<Vector3> _vertices = new ();
     private List<int> _triangles = new ();
@@ -24,12 +27,13 @@ public class GridGenerator : MonoBehaviour
     private float _halfRadius;
     private static readonly int MainTex = Shader.PropertyToID("_MainTex");
     private static readonly int Layer1Tex = Shader.PropertyToID("_Layer1Tex");
+    private static readonly int Layer2Tex = Shader.PropertyToID("_Layer2Tex");
     private List<GameObject> _pool = new ();
     private Dictionary<int, Triangle> _trianglesByIndex = new();
     private Dictionary<int, List<int>> _meshIndexesByGlobalVertexIndex = new();
     private Dictionary<int, Mesh> _meshByMeshIndex = new();
     private Dictionary<int, Dictionary<int, List<int>>> _meshIndexAndLocalVertexIndexPairByGlobalVertexIndex = new();
-    private Dictionary<Vector3, Dictionary<int, List<int>>> _vertexByPosition = new();
+    private Dictionary<Vector3, Dictionary<int, List<int>>> _meshIndexAndLocalVertexIndexPairByPosition = new();
     private Dictionary<int, Vector3> _vertexPositionByHexIndex = new();
 
     private void Awake()
@@ -68,18 +72,19 @@ public class GridGenerator : MonoBehaviour
             {
                 var spriteIndex = j + (8 * (6 - i));
 
-                var quadCenter = new Vector3(_size / 2 + j * _size, _size / 2 + i * _size);
+                var quadCenter = new Vector3(_size / 2 + j * _size, _size / 2 + (i - 1) * _size);
                 var halfSize = _size / 2;
                 var go = Generate(quadCenter, _size, spriteIndex);
                 var render = go.GetComponent<MeshRenderer>();
                 
                 SetRendererTexture(render, MainTex, _1[spriteIndex]);
                 SetRendererTexture(render, Layer1Tex, _1_n[spriteIndex]);
+                SetRendererTexture(render, Layer2Tex, _fog);
             }
         }
 
         var k = 0;
-        foreach (var kvp in _vertexByPosition)
+        foreach (var kvp in _meshIndexAndLocalVertexIndexPairByPosition)
         {
              _vertexPositionByHexIndex.Add(k, kvp.Key);
              k++;
@@ -90,14 +95,14 @@ public class GridGenerator : MonoBehaviour
     {
         // _indexToColor++;
 
-        foreach (var kvp in _vertexByPosition[_vertexPositionByHexIndex[_indexToColor]])
+        foreach (var kvp in _meshIndexAndLocalVertexIndexPairByPosition[_vertexPositionByHexIndex[_indexToColor]])
         {
             if (_meshByMeshIndex.TryGetValue(kvp.Key, out var mesh))
             {
                 foreach (var index in kvp.Value)
                 {
                     var colors = mesh.colors;
-                    colors[index] = Color.red;
+                    colors[index] = _color;
                     mesh.colors = colors;
                 }
             }
@@ -165,25 +170,30 @@ public class GridGenerator : MonoBehaviour
                     var leftBottomTileVertexWorldPosition = position - new Vector3(size / 2, size / 2);
                     var rightRopTileVertexWorldPosition = position + new Vector3(size / 2, size / 2);
                     var k = 0;
+                    var buffer = new Dictionary<int, Vector3>();
+                    
                     foreach (var vert in triangleByIndex.Value.Vertexes)
                     {
-                        var vertIndex = vertices.Count + k;
+                        buffer.Add(vertices.Count + k, vert);
+                        k++;
+                    }
+                    
+                    foreach (var vert in buffer)
+                    {
+                        var roundedPosition = RoundVector(vert);
+                        var indexes = buffer.Where(x => x.Key == vert.Key).Select(x => x.Key);
 
-                        if (!_vertexByPosition.ContainsKey(vert))
+                        if (!_meshIndexAndLocalVertexIndexPairByPosition.ContainsKey(roundedPosition))
                         {
-                            var a = new List<int>() { vertices.Count + k };
-                            a.Remove(vertIndex);
-                            _vertexByPosition.Add(vert, new Dictionary<int, List<int>>(){{meshIndex, a} });
+                            _meshIndexAndLocalVertexIndexPairByPosition.Add(roundedPosition, new Dictionary<int, List<int>>(){{meshIndex, indexes.ToList()} });
                         }
                         else
                         {
-                            var a = new List<int>() { vertices.Count + k };
-                            a.Remove(vertIndex);
-                            if (!_vertexByPosition[vert].ContainsKey(meshIndex))
+                            if (!_meshIndexAndLocalVertexIndexPairByPosition[roundedPosition].ContainsKey(meshIndex))
                             {
-                                _vertexByPosition[vert].Add(meshIndex, new List<int>());
+                                _meshIndexAndLocalVertexIndexPairByPosition[roundedPosition].Add(meshIndex, new List<int>());
                             }
-                            _vertexByPosition[vert][meshIndex].AddRange(a);
+                            _meshIndexAndLocalVertexIndexPairByPosition[roundedPosition][meshIndex].AddRange(indexes);
                         }
                         
                         if (_meshIndexAndLocalVertexIndexPairByGlobalVertexIndex.ContainsKey(triangleByIndex.Key))
@@ -198,9 +208,8 @@ public class GridGenerator : MonoBehaviour
                             _meshIndexAndLocalVertexIndexPairByGlobalVertexIndex.Add(triangleByIndex.Key, dict);
                         }
                         
-                        ver.Add(vert);
-                        colors.Add(Color.black);
-                        k++;
+                        ver.Add(vert.Value);
+                        colors.Add(Color.red);
                     }
                     
                     foreach (var v in ver)
@@ -233,6 +242,11 @@ public class GridGenerator : MonoBehaviour
         go.SetActive(true);
 
         return go;
+    }
+
+    private static Vector3 RoundVector(KeyValuePair<int, Vector3> vert)
+    {
+        return new Vector3((float)Math.Round(vert.Value.x, 2), (float)Math.Round(vert.Value.y, 2));
     }
 
     private float GetUVValue(float a, float b, float v)
@@ -269,7 +283,6 @@ public class GridGenerator : MonoBehaviour
                 vertices.AddRange(newVertexes);
                 var newTriangle = GetTrianglesByVertex(newVertexes, index, IsNeedToRotate());
                 triangles.AddRange(newTriangle);
-                Debug.LogError(index);
                 _trianglesByIndex.Add(index, new Triangle(index, newVertexes, newTriangle, IsNeedToRotate()));
                 
                 _offset += new Vector3(_height * 2, 0);
